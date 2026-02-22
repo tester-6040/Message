@@ -26,31 +26,33 @@ A no-framework private messenger with:
    ```bash
    mysql -u root -p < database/schema.sql
    ```
-3. Start app from repo root:
+3. Start app (recommended):
+   ```bash
+   ./serve.sh
+   ```
+   or:
    ```bash
    php -S 0.0.0.0:8000 -t public
    ```
-4. Open `http://localhost:8000/index.php`
+4. Open `http://localhost:8000`
 
 ## If you see "This site can’t be reached"
-- Ensure PHP dev server is running in this repository:
+- The PHP server is not running on port 8000. Start it first:
   ```bash
-  php -S 0.0.0.0:8000 -t public
+  ./serve.sh
   ```
-- Verify health endpoint:
+- Then verify app health:
   ```bash
   curl -i http://127.0.0.1:8000/health.php
   ```
 
-## Routes
-- Landing: `/index.php`
-- Login/Register: `/login.php`
-- Chat: `/chat.php`
-- API: `/api.php?action=...`
-- Health check: `/health.php`
+## Routing compatibility
+The project now supports both styles:
+- Direct `public/` document root (`php -S ... -t public`) using `/chat.php`, `/login.php`, `/api.php`, `/health.php`.
+- Repo-root access (Apache/shared hosting style) via root proxy files: `chat.php`, `login.php`, `api.php`, `health.php`.
 
 ## API endpoints
-Via `public/api.php?action=...`:
+Via `api.php?action=...`:
 - `start-conversation` (POST)
 - `messages` (GET)
 - `send-message` (POST)
