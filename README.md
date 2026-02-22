@@ -1,11 +1,13 @@
 # PinkSecret Messenger (PHP MVC)
 
 A no-framework private messenger with:
+- Romantic landing page (`For You, My Heart`) as home
 - Login/Register
 - 1:1 conversations
 - Encrypted message text storage
 - Image/video sharing
 - Typing indicator
+- Online/Offline presence
 - Browser notifications
 - Pink professional UI with Tailwind CSS
 
@@ -26,6 +28,8 @@ A no-framework private messenger with:
    php -S 0.0.0.0:8000 -t public
    ```
 4. Open: `http://localhost:8000`
+   - Landing page: `/index.php`
+   - Login/Register: `/login.php`
 
 ## API endpoints
 Via `public/api.php?action=...`:
@@ -34,5 +38,6 @@ Via `public/api.php?action=...`:
 - `send-message` (POST)
 - `typing` (POST)
 - `typing-status` (GET)
+- `online-status` (GET)
 
 All POST requests require `_csrf`.

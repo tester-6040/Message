@@ -4,7 +4,7 @@
         <aside class="border-r p-4 bg-pink-50">
             <div class="flex items-center justify-between">
                 <h2 class="font-bold text-lg text-pink-700">Chats</h2>
-                <form method="post" action="index.php">
+                <form method="post" action="login.php">
                     <input type="hidden" name="_csrf" value="<?= e(csrf_token()) ?>">
                     <input type="hidden" name="action" value="logout">
                     <button class="text-xs bg-white border rounded-lg px-2 py-1">Logout</button>
@@ -16,7 +16,7 @@
                 <select id="partnerSelect" class="w-full border rounded-xl p-2">
                     <option value="">Start a new private chat</option>
                     <?php foreach ($users as $user): ?>
-                        <option value="<?= (int)$user['id'] ?>"><?= e($user['name']) ?> (<?= e($user['email']) ?>)</option>
+                        <option value="<?= (int)$user['id'] ?>"><?= e($user['name']) ?> • <?= ((int)$user['is_online'] === 1 ? 'Online' : 'Offline') ?></option>
                     <?php endforeach; ?>
                 </select>
             </div>
@@ -25,7 +25,10 @@
                 <?php foreach ($conversations as $c): ?>
                     <li>
                         <button class="w-full text-left bg-white p-3 rounded-xl border conversation-item" data-id="<?= (int)$c['id'] ?>" data-partner="<?= e($c['partner_name']) ?>">
-                            <p class="font-semibold text-sm"><?= e($c['partner_name']) ?></p>
+                            <div class="flex justify-between items-center gap-2">
+                                <p class="font-semibold text-sm"><?= e($c['partner_name']) ?></p>
+                                <span class="text-[10px] px-2 py-0.5 rounded-full <?= ((int)$c['partner_online'] === 1 ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-500') ?>"><?= ((int)$c['partner_online'] === 1 ? 'Online' : 'Offline') ?></span>
+                            </div>
                             <p class="text-xs text-gray-500 truncate"><?= e($c['preview']) ?></p>
                         </button>
                     </li>
@@ -35,7 +38,11 @@
 
         <main class="md:col-span-3 flex flex-col">
             <header class="border-b p-4">
-                <h3 id="chatTitle" class="font-semibold text-pink-700">Select or create a chat</h3>
+                <div class="flex items-center gap-3">
+                    <h3 id="chatTitle" class="font-semibold text-pink-700">Select or create a chat</h3>
+                    <span id="onlineDot" class="hidden w-2.5 h-2.5 rounded-full bg-gray-300"></span>
+                    <span id="onlineText" class="text-xs text-gray-500"></span>
+                </div>
                 <p id="typingStatus" class="text-xs text-gray-500 h-4"></p>
             </header>
             <section id="messages" class="flex-1 p-4 overflow-auto bg-gradient-to-b from-white to-pink-50"></section>
@@ -55,7 +62,7 @@
 const API = 'api.php';
 let activeConversation = null;
 
-function esc(s){return (s||'').replace(/[&<>\"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m]));}
+function esc(s){return (s||'').replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m]));}
 
 async function api(action, method='GET', formData=null){
     const url = `${API}?action=${action}` + (method==='GET' && formData?.get('conversation_id') ? `&conversation_id=${formData.get('conversation_id')}` : '');
@@ -71,12 +78,20 @@ function renderMessages(list){
         let media = '';
         if (m.media_path) {
             media = m.media_type === 'image'
-                ? `<img src="../${m.media_path}" class="max-w-xs rounded-lg mt-2"/>`
-                : `<video src="../${m.media_path}" controls class="max-w-xs rounded-lg mt-2"></video>`;
+                ? `<img src="${m.media_path}" class="max-w-xs rounded-lg mt-2"/>`
+                : `<video src="${m.media_path}" controls class="max-w-xs rounded-lg mt-2"></video>`;
         }
         return `<div class="flex ${align} mb-2"><div class="${bubble} rounded-2xl px-4 py-2 max-w-md"><p>${esc(m.text||'')}</p>${media}<span class="text-[10px] opacity-70">${m.created_at}</span></div></div>`;
     }).join('');
     box.scrollTop = box.scrollHeight;
+}
+
+function paintOnline(isOnline){
+    const dot = document.getElementById('onlineDot');
+    const text = document.getElementById('onlineText');
+    dot.classList.remove('hidden');
+    dot.className = `w-2.5 h-2.5 rounded-full ${isOnline ? 'bg-emerald-500' : 'bg-gray-300'}`;
+    text.textContent = isOnline ? 'Online' : 'Offline';
 }
 
 async function loadMessages(){
@@ -86,6 +101,8 @@ async function loadMessages(){
     renderMessages(data.messages || []);
     const typing = await api('typing-status','GET',fd);
     document.getElementById('typingStatus').textContent = typing.data.typing ? 'Typing...' : '';
+    const online = await api('online-status', 'GET', fd);
+    paintOnline(Boolean(online.data.online));
 }
 
 document.querySelectorAll('.conversation-item').forEach(btn => {
@@ -103,7 +120,7 @@ document.getElementById('partnerSelect').addEventListener('change', async (e) =>
     fd.set('_csrf', '<?= e(csrf_token()) ?>');
     fd.set('partner_id', e.target.value);
     const {data, ok} = await api('start-conversation', 'POST', fd);
-    if (ok) { activeConversation = data.conversation_id; document.getElementById('conversationId').value = activeConversation; await loadMessages(); }
+    if (ok) { activeConversation = data.conversation_id; document.getElementById('conversationId').value = activeConversation; await loadMessages(); window.location.reload(); }
 });
 
 document.getElementById('sendForm').addEventListener('submit', async (e) => {

@@ -1,9 +1,10 @@
 <?php require __DIR__ . '/../layouts/header.php'; ?>
-<div class="min-h-screen flex items-center justify-center p-6">
+<div class="min-h-screen flex items-center justify-center p-6 bg-gradient-to-br from-pink-50 to-rose-100">
     <div class="w-full max-w-5xl grid md:grid-cols-2 rounded-3xl shadow-2xl overflow-hidden bg-white">
         <div class="bg-gradient-to-br from-pink-500 to-rose-500 p-10 text-white">
             <h1 class="text-4xl font-bold mb-4">PinkSecret Messenger</h1>
-            <p class="opacity-95">Private chatting with end-to-end style encrypted text at rest, media sharing, typing status, and notifications — all with a romantic pink theme.</p>
+            <p class="opacity-95">Secure private messaging with media, typing indicator, and online status in a professional pink interface.</p>
+            <a href="index.php" class="inline-block mt-6 text-sm underline">← Back to landing</a>
         </div>
         <div class="p-8">
             <div class="mb-8">
@@ -33,7 +34,7 @@
 </div>
 <script>
 async function submitForm(form) {
-    const res = await fetch('index.php', { method: 'POST', body: new FormData(form) });
+    const res = await fetch('login.php', { method: 'POST', body: new FormData(form) });
     const data = await res.json();
     document.getElementById('authMsg').textContent = data.message || 'Done';
     if (res.ok) window.location.href = 'chat.php';

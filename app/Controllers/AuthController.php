@@ -6,12 +6,18 @@ use App\Models\User;
 
 class AuthController
 {
-    public function index(): void
+    public function landing(): void
+    {
+        view('auth/landing', ['title' => 'For You, My Heart']);
+    }
+
+    public function loginPage(): void
     {
         if (current_user_id()) {
             redirect('chat.php');
         }
-        view('auth/login', ['title' => 'Welcome']);
+
+        view('auth/login', ['title' => 'Login']);
     }
 
     public function login(): void
@@ -27,6 +33,7 @@ class AuthController
 
         session_regenerate_id(true);
         $_SESSION['user_id'] = (int) $user['id'];
+        (new User())->heartbeat((int) $user['id']);
         json_response(['message' => 'Logged in']);
     }
 

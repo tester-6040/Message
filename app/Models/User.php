@@ -8,7 +8,7 @@ class User extends Model
 {
     public function create(string $name, string $email, string $password): int
     {
-        $stmt = $this->db()->prepare('INSERT INTO users(name, email, password_hash) VALUES(:name, :email, :password_hash)');
+        $stmt = $this->db()->prepare('INSERT INTO users(name, email, password_hash, last_seen_at) VALUES(:name, :email, :password_hash, NOW())');
         $stmt->execute([
             ':name' => $name,
             ':email' => $email,
@@ -27,15 +27,21 @@ class User extends Model
 
     public function allExcept(int $id): array
     {
-        $stmt = $this->db()->prepare('SELECT id, name, email, avatar FROM users WHERE id != :id ORDER BY name ASC');
+        $stmt = $this->db()->prepare('SELECT id, name, email, avatar, last_seen_at, (last_seen_at >= DATE_SUB(NOW(), INTERVAL 20 SECOND)) AS is_online FROM users WHERE id != :id ORDER BY is_online DESC, name ASC');
         $stmt->execute([':id' => $id]);
         return $stmt->fetchAll();
     }
 
     public function find(int $id): ?array
     {
-        $stmt = $this->db()->prepare('SELECT id, name, email, avatar FROM users WHERE id = :id LIMIT 1');
+        $stmt = $this->db()->prepare('SELECT id, name, email, avatar, last_seen_at, (last_seen_at >= DATE_SUB(NOW(), INTERVAL 20 SECOND)) AS is_online FROM users WHERE id = :id LIMIT 1');
         $stmt->execute([':id' => $id]);
         return $stmt->fetch() ?: null;
+    }
+
+    public function heartbeat(int $id): void
+    {
+        $stmt = $this->db()->prepare('UPDATE users SET last_seen_at = NOW() WHERE id = :id');
+        $stmt->execute([':id' => $id]);
     }
 }

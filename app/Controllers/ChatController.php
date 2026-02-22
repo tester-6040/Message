@@ -12,7 +12,10 @@ class ChatController
         require_auth();
 
         $userId = current_user_id();
-        $users = (new User())->allExcept($userId);
+        $userModel = new User();
+        $userModel->heartbeat($userId);
+
+        $users = $userModel->allExcept($userId);
         $conversations = (new Conversation())->forUser($userId);
 
         foreach ($conversations as &$conv) {
@@ -23,7 +26,7 @@ class ChatController
             'title' => 'Private Chat',
             'users' => $users,
             'conversations' => $conversations,
-            'me' => (new User())->find($userId),
+            'me' => $userModel->find($userId),
         ]);
     }
 }

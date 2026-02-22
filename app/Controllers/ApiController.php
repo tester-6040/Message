@@ -5,6 +5,7 @@ namespace App\Controllers;
 use App\Models\Conversation;
 use App\Models\Message;
 use App\Models\TypingStatus;
+use App\Models\User;
 
 class ApiController
 {
@@ -14,7 +15,15 @@ class ApiController
         if (!$uid) {
             json_response(['message' => 'Unauthenticated'], 401);
         }
+        (new User())->heartbeat($uid);
         return $uid;
+    }
+
+    private function ensureParticipant(int $conversationId, int $uid): void
+    {
+        if (!(new Conversation())->isParticipant($conversationId, $uid)) {
+            json_response(['message' => 'Forbidden'], 403);
+        }
     }
 
     public function startConversation(): void
@@ -35,6 +44,7 @@ class ApiController
         if (!$conversationId) {
             json_response(['message' => 'Missing conversation_id'], 422);
         }
+        $this->ensureParticipant($conversationId, $uid);
 
         $rows = (new Message())->list($conversationId);
         $data = array_map(fn ($m) => [
@@ -69,15 +79,16 @@ class ApiController
                 json_response(['message' => 'Unsupported media type'], 422);
             }
             $file = uniqid('media_', true) . '.' . $allowed[$mime];
-            $target = __DIR__ . '/../../storage/uploads/' . $file;
+            $target = __DIR__ . '/../../public/uploads/' . $file;
             move_uploaded_file($_FILES['media']['tmp_name'], $target);
-            $mediaPath = 'storage/uploads/' . $file;
+            $mediaPath = 'uploads/' . $file;
             $mediaType = str_starts_with($mime, 'image/') ? 'image' : 'video';
         }
 
         if (!$conversationId || (!$text && !$mediaPath)) {
             json_response(['message' => 'conversation_id + text/media required'], 422);
         }
+        $this->ensureParticipant($conversationId, $uid);
 
         (new Message())->create($conversationId, $uid, $text ?: null, $mediaPath, $mediaType);
         json_response(['message' => 'sent']);
@@ -91,6 +102,7 @@ class ApiController
         if (!$conversationId) {
             json_response(['message' => 'conversation_id required'], 422);
         }
+        $this->ensureParticipant($conversationId, $uid);
 
         (new TypingStatus())->upsert($conversationId, $uid, $isTyping);
         json_response(['ok' => true]);
@@ -103,7 +115,28 @@ class ApiController
         if (!$conversationId) {
             json_response(['message' => 'conversation_id required'], 422);
         }
+        $this->ensureParticipant($conversationId, $uid);
+
         $typing = (new TypingStatus())->otherTyping($conversationId, $uid);
         json_response(['typing' => $typing]);
+    }
+
+    public function onlineStatus(): void
+    {
+        $uid = $this->ensureAuth();
+        $conversationId = (int) ($_GET['conversation_id'] ?? 0);
+        if (!$conversationId) {
+            json_response(['message' => 'conversation_id required'], 422);
+        }
+        $this->ensureParticipant($conversationId, $uid);
+
+        $conversations = (new Conversation())->forUser($uid);
+        foreach ($conversations as $conversation) {
+            if ((int) $conversation['id'] === $conversationId) {
+                json_response(['online' => (bool) $conversation['partner_online']]);
+            }
+        }
+
+        json_response(['online' => false]);
     }
 }

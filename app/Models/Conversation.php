@@ -21,11 +21,19 @@ class Conversation extends Model
         return (int) $this->db()->lastInsertId();
     }
 
+    public function isParticipant(int $conversationId, int $userId): bool
+    {
+        $stmt = $this->db()->prepare('SELECT id FROM conversations WHERE id = :cid AND (user_a_id = :uid OR user_b_id = :uid) LIMIT 1');
+        $stmt->execute([':cid' => $conversationId, ':uid' => $userId]);
+        return (bool) $stmt->fetch();
+    }
+
     public function forUser(int $userId): array
     {
         $sql = "SELECT c.id,
                        CASE WHEN c.user_a_id = :uid THEN u2.name ELSE u1.name END AS partner_name,
                        CASE WHEN c.user_a_id = :uid THEN u2.id ELSE u1.id END AS partner_id,
+                       CASE WHEN c.user_a_id = :uid THEN (u2.last_seen_at >= DATE_SUB(NOW(), INTERVAL 20 SECOND)) ELSE (u1.last_seen_at >= DATE_SUB(NOW(), INTERVAL 20 SECOND)) END AS partner_online,
                        m.content_encrypted,
                        m.media_path,
                        m.created_at AS last_at
